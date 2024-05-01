@@ -1,10 +1,11 @@
-import React, { useState, useEffect} from 'react';
+import React, { useState, useEffect, useCallback,useMemo } from 'react';
 import { faker } from '@faker-js/faker';
 import DataTable from './components/DataTable';
 import ErrorControls from './components/ErrorControls';
 import RegionSelector from './components/RegionSelector';
 import SeedGenerator from './components/SeedGenerator';
 import './App.css';
+
 const regions = ['Poland', 'USA', 'Spain'];
 const recordsPerPage = 20;
 
@@ -15,7 +16,29 @@ const App = () => {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(0);
 
-    const generateData = (count, region, errors) => {
+  const regionConfig = useMemo(() => ({
+    Poland: {
+      generateName: () => `${faker.name.firstName()} ${faker.name.lastName()}`,
+      generateAddress: () => `${faker.address.city()}, ${faker.address.streetAddress()}`,
+      generatePhone: () => faker.phone.number('+48 ### ### ###'),
+    },
+    USA: {
+      generateName: () => `${faker.name.firstName()} ${faker.name.middleName()} ${faker.name.lastName()}`,
+      generateAddress: () => faker.address.streetAddress(true),
+      generatePhone: () => faker.phone.number('+1 (###) ###-####'),
+    },
+    Spain: {
+      generateName: () => `${faker.name.firstName()} ${faker.name.lastName()}`,
+      generateAddress: () => `${faker.address.city()}, ${faker.address.streetAddress()}`,
+      generatePhone: () => faker.phone.number('+34 ### ### ###'),
+    },
+  }), []);
+
+  const generateName = useCallback((region) => regionConfig[region]?.generateName() || '', [regionConfig]);
+  const generateAddress = useCallback((region) => regionConfig[region]?.generateAddress() || '', [regionConfig]);
+  const generatePhone = useCallback((region) => regionConfig[region]?.generatePhone() || '', [regionConfig]);
+
+  const generateData = useCallback((count, region, errors) => {
     const data = [];
     const nameCache = new Set();
     const addressCache = new Set();
@@ -45,36 +68,14 @@ const App = () => {
     }
 
     return data;
-  };
+  }, [generateName, generateAddress, generatePhone, page]);
 
   useEffect(() => {
     const randomSeed = seed + page;
     faker.seed(randomSeed);
     const newData = generateData(recordsPerPage, region, errors);
     setData(newData);
-  }, [region, errors, seed, page]);
-
-  const regionConfig = {
-    Poland: {
-      generateName: () => `${faker.name.firstName()} ${faker.name.lastName()}`,
-      generateAddress: () => `${faker.address.city()}, ${faker.address.streetAddress()}`,
-      generatePhone: () => faker.phone.number('+48 ### ### ###'),
-    },
-    USA: {
-      generateName: () => `${faker.name.firstName()} ${faker.name.middleName()} ${faker.name.lastName()}`,
-      generateAddress: () => faker.address.streetAddress(true),
-      generatePhone: () => faker.phone.number('+1 (###) ###-####'),
-    },
-    Spain: {
-      generateName: () => `${faker.name.firstName()} ${faker.name.lastName()}`,
-      generateAddress: () => `${faker.address.city()}, ${faker.address.streetAddress()}`,
-      generatePhone: () => faker.phone.number('+34 ### ### ###'),
-    },
-  };
-  
-  const generateName = (region) => regionConfig[region]?.generateName() || '';
-  const generateAddress = (region) => regionConfig[region]?.generateAddress() || '';
-  const generatePhone = (region) => regionConfig[region]?.generatePhone() || '';
+  }, [region, errors, seed, page, generateData]);
 
   const applyErrors = (record, errorRate) => {
     const { name, address, phone } = record;
@@ -115,20 +116,20 @@ const App = () => {
   return (
     <div id='contact-form'>
       <div id='table-container'>
-      <RegionSelector
-        region={region}
-        regions={regions}
-        onRegionChange={setRegion}
-      />
-      <ErrorControls
-        errors={errors}
-        onErrorsChange={setErrors}
-      />
-      <SeedGenerator
-        seed={seed}
-        onSeedChange={setSeed}
-        onRandomSeed={() => setSeed(Math.floor(Math.random() * 1000000))}
-      />
+        <RegionSelector
+          region={region}
+          regions={regions}
+          onRegionChange={setRegion}
+        />
+        <ErrorControls
+          errors={errors}
+          onErrorsChange={setErrors}
+        />
+        <SeedGenerator
+          seed={seed}
+          onSeedChange={setSeed}
+          onRandomSeed={() => setSeed(Math.floor(Math.random() * 1000000))}
+        />
       </div>
       <DataTable
         data={data}
